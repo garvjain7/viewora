@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: viewora-backend
+Version: 0.1.0
+Requires-Python: <3.14,>=3.13
+Requires-Dist: alembic
+Requires-Dist: argon2-cffi
+Requires-Dist: fastapi
+Requires-Dist: procrastinate
+Requires-Dist: psycopg[binary,pool]
+Requires-Dist: pydantic>=2
+Requires-Dist: sqlalchemy<3,>=2
+Requires-Dist: structlog
+Requires-Dist: uvicorn[standard]

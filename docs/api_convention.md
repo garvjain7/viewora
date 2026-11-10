@@ -1,6 +1,8 @@
 # API conventions
 
-Applies to the public HTTP API (dashboard, storefront, third parties later). Source of truth is the generated OpenAPI; this file states the rules the generator must respect.
+> **Working API design draft, not an implemented contract.** These are candidate conventions for the Python API. There is no generated OpenAPI or implemented public API in the current scaffold. Once endpoints exist, generated OpenAPI should describe actual behavior; update these conventions when the owner approves changes.
+
+Applies to the proposed public HTTP API (dashboard, storefront, and possibly third parties later). Do not infer that every endpoint or behavior below is already implemented or approved.
 
 ## 1. URLs and versioning
 - Base: `https://api.viewora.com/v1`. Version in the path; breaking change = new major, old one kept for a stated period.
@@ -49,18 +51,18 @@ One shape everywhere (RFC 9457 problem details):
 
 ## 6. Idempotency
 - `POST` endpoints that create orders, payments, refunds, subscriptions, uploads or credits **require** `Idempotency-Key` (client-generated UUID). (COR-03)
-- Stored 24 h in State Redis with Postgres unique constraint as the backstop; same key + same body returns the original response; same key + different body returns 422 `idempotency.key_reuse`.
+- Same key + same body should return the original result; same key + different body should be rejected. Redis may provide fast in-progress coordination or response lookup, but durable correctness (especially orders, payments, credits, and webhook processing) must survive Redis loss through a persistent record/unique constraint. Storage and retention window are open; a Redis lock alone is not sufficient.
 
 ## 7. Concurrency
 - Mutable resources return an `ETag`; updates may send `If-Match`. Mismatch → 412.
 
 ## 8. Auth
 - `Authorization: Bearer <access token>`; 15-minute lifetime. Refresh via `/v1/auth/refresh` with a rotating refresh token; reuse detection revokes the family.
-- Guest shoppers use a signed anonymous session cookie for cart only.
+- Guest shoppers need an anonymous session mechanism for cart access; cookie format, signing, and storage are open.
 - Webhooks: `POST /v1/webhooks/razorpay` verified by signature; no bearer token; replay-safe by event id.
 
 ## 9. Rate limiting
-- Token bucket in State Redis, per IP and per tenant, per route class (auth, read, write, expensive). Headers: `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`. 429 on exhaustion. Expensive routes (AI, try-on, generation) also check credits and return 402 `billing.insufficient_credits`.
+- Redis is a candidate for fast token-bucket limits per IP/tenant/route class. Define behavior when the limiter is unavailable. Usage limits and paid credits must still be enforced by an authoritative mechanism; expensive routes also check credits and may return 402 `billing.insufficient_credits`.
 
 ## 10. Caching
 - Public GETs set `Cache-Control` explicitly with `s-maxage` and `stale-while-revalidate`, and `Vary` only on what truly varies.
@@ -68,7 +70,7 @@ One shape everywhere (RFC 9457 problem details):
 - Asset URLs are content-hash paths with `immutable, max-age=31536000`.
 
 ## 11. Async operations
-- Long work returns 202 with `{"job_id": "…", "status_url": "/v1/jobs/{id}"}`. Job states: `queued, running, succeeded, failed, cancelled`. Result links, not payloads.
+- Long work may return 202 with `{"job_id": "…", "status_url": "/v1/jobs/{id}"}`. Durable status and result links must remain available after process/Redis restarts. Redis can carry temporary progress notifications; it is not the sole job record. Queue and live-update transport are open.
 - Uploads: `POST /v1/assets/uploads` returns a signed URL + `asset_id`; the client uploads directly, then `POST /v1/assets/{id}/complete`.
 
 ## 12. Events and webhooks out

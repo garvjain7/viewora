@@ -1,6 +1,8 @@
 # 01 — Requirements
 
-Gates: **P** prototype, **L** launch, **S** scale. A requirement marked `L` must hold before real merchants pay; `S` is entered only when an ADR trigger fires. `P` items are the first working slice. See [README](README.md).
+> **Working requirements draft, not a final contract.** The MUST/SHOULD/MAY words and P/L/S gates preserve the source document's prioritization, but they still need owner review against the product, budget, and implementation sequence. Do not infer that every requirement is approved or must be implemented now. Current stack direction and unresolved questions are in [stack.md](stack.md) and [open-questions.md](open-questions.md).
+
+Gates are proposed planning labels: **P** prototype, **L** launch, **S** scale. `P` does not itself define the first slice; choose that slice from the agreed user journey. See [README](../README.md).
 
 Priority words: **MUST** / **SHOULD** / **MAY**.
 
@@ -8,7 +10,7 @@ Priority words: **MUST** / **SHOULD** / **MAY**.
 
 ## Part A — Functional requirements (by module)
 
-Modules match the code layout in [conventions.md](conventions.md).
+Modules are proposed product/domain groupings. The current code layout is a scaffold and does not yet implement these boundaries.
 
 ### identity (IDN)
 
@@ -17,7 +19,7 @@ Modules match the code layout in [conventions.md](conventions.md).
 | IDN-01 | MUST support merchant sign-up with email + OTP/password; merchant = tenant.                        | P    |
 | IDN-02 | MUST support shopper accounts via phone OTP (SMS) with guest checkout allowed.                     | L    |
 | IDN-03 | MUST support merchant staff users with roles: owner, manager, staff.                               | L    |
-| IDN-04 | MUST issue short-lived access tokens and revocable refresh tokens; revocation list in state Redis. | L    |
+| IDN-04 | MUST issue short-lived access tokens and revocable refresh tokens; token storage/revocation mechanism remains open. | L    |
 | IDN-05 | MUST rate-limit auth endpoints per IP and per identifier.                                          | L    |
 | IDN-06 | SHOULD support Google sign-in for merchants.                                                       | L    |
 
@@ -41,7 +43,7 @@ Modules match the code layout in [conventions.md](conventions.md).
 | CAT-04 | MUST give each product a slug unique within its merchant; slug changes keep old slugs redirecting.     | P    |
 | CAT-05 | MUST support bulk import from CSV with row-level error reporting.                                      | L    |
 | CAT-06 | SHOULD support draft/published/archived states and scheduled publish.                                  | L    |
-| CAT-07 | MAY ingest from external sources (Shopify, etc.). Scope **OPEN** (05, A-05).                     | S    |
+| CAT-07 | MAY ingest from external sources (Shopify, etc.). Scope **OPEN**; see [open questions](open-questions.md). | S |
 | CAT-08 | MUST support a restaurant/cafe menu shape (sections, items, dietary tags) as a vertical profile.       | L    |
 
 ### inventory (INV)
@@ -77,7 +79,7 @@ Modules match the code layout in [conventions.md](conventions.md).
 | QRS-03 | MUST provide printable QR assets (SVG/PNG/PDF) with error-correction suitable for print.                           | L    |
 | QRS-04 | MUST record each scan as an event (code, time, coarse device, no PII).                                             | L    |
 | QRS-05 | MUST keep working codes if a merchant is suspended (show a neutral page, not a 404).                               | L    |
-| QRS-06 | MUST provide a redirect map for any legacy ScanVista QR codes if any are live (**OPEN**, 05 A-04).           | L    |
+| QRS-06 | If legacy ScanVista QR codes are live, provide a redirect map. Whether this requirement applies is **OPEN**; see [open questions](open-questions.md). | L |
 
 ### storefront (STF)
 
@@ -131,7 +133,7 @@ Modules match the code layout in [conventions.md](conventions.md).
 
 | ID     | Requirement                                                                                                                                    | Gate |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| CRT-01 | MUST keep a cart per merchant (single-merchant carts) for guests and accounts; stored in state Redis with persistence to Postgres on checkout. | L    |
+| CRT-01 | MUST keep a single-merchant cart for guests and accounts. Redis is the current storage candidate; define expiry, recovery/loss tolerance, and the exact transition into a durable order. Do not persist abandoned carts unless that requirement changes. | L    |
 | CRT-02 | MUST re-price and re-check stock from Postgres at checkout; cached values are never trusted.                                                   | L    |
 | CRT-03 | MUST merge guest cart into account cart on sign-in.                                                                                            | L    |
 
@@ -162,7 +164,7 @@ Modules match the code layout in [conventions.md](conventions.md).
 
 | ID     | Requirement                                                                                                                  | Gate |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------- | ---- |
-| ANL-01 | MUST record scan, view, 3D interaction, AR launch, try-on start, add-to-cart, purchase events via Redis Streams to Postgres. | L    |
+| ANL-01 | MUST record scan, view, 3D interaction, AR launch, try-on start, add-to-cart, and purchase events and deliver them to durable analytics storage. Redis Streams is a candidate transport, not a settled requirement. | L    |
 | ANL-02 | MUST give merchants dashboards: scans, views, conversion, top products, device split.                                        | L    |
 | ANL-03 | MUST aggregate in rollup tables; raw events retained for a bounded period.                                                   | L    |
 | ANL-04 | MUST not collect PII in scan/view events.                                                                                    | L    |
@@ -178,6 +180,8 @@ Modules match the code layout in [conventions.md](conventions.md).
 | AIX-04 | MUST run all LLM/AI calls through one gateway with budget, timeout, retries, fallback, and logging.                                         | L    |
 | AIX-05 | MUST NOT put an LLM call in the critical path of page render or checkout.                                                                   | L    |
 | AIX-06 | SHOULD cache AI outputs by input hash.                                                                                                      | L    |
+| AIX-07 | MUST help shoppers research products through natural-language questions, comparisons, and recommendations. Multi-turn behavior, personalization, and any purchase actions need explicit scope before implementation. | L |
+| AIX-08 | MUST evaluate shopper-assistant quality on realistic multi-turn product tasks and equivalent requests written in varied styles; include typo robustness and factual/product constraint checks. | L |
 
 ### notifications (NTF), fulfillment (FUL), admin (ADM), integrations (INT)
 
@@ -189,7 +193,7 @@ Modules match the code layout in [conventions.md](conventions.md).
 | FUL-02 | MAY integrate the owner's last-mile delivery platform through a `Fulfillment` port.                     | S    |
 | ADM-01 | MUST provide an admin console: merchants, suspension, moderation queue, asset QA queue, refunds view.     | L    |
 | ADM-02 | MUST audit-log every admin and merchant-destructive action.                                               | L    |
-| INT-01 | MAY expose a public API/embed (viewer widget on merchant's own site). Scope **OPEN** (05, A-05).    | S    |
+| INT-01 | MAY expose a public API/embed (viewer widget on merchant's own site). Scope **OPEN**; see [open questions](open-questions.md). | S |
 
 ---
 
@@ -224,7 +228,7 @@ Targets are measured at **p75 on a mid-range Android phone over 4G** for client 
 | SCAL-01 | API and SSR stateless; scale horizontally behind a load balancer.                                               | L    |
 | SCAL-02 | Workers scale independently by queue backlog; asset/generation workers scale to zero.                           | L    |
 | SCAL-03 | Read path survives Postgres primary loss for hot content for ≥ 5 min via CDN + Redis (stale-while-revalidate). | L    |
-| SCAL-04 | Scan/view events absorb 10× bursts via Redis Streams without dropping.                                         | L    |
+| SCAL-04 | Scan/view event ingestion absorbs 10× bursts without dropping events beyond an explicitly agreed loss/retention policy. Redis Streams is one candidate transport. | L |
 | SCAL-05 | Postgres read replica serves search/analytics reads; replica lag monitored.                                     | S    |
 | SCAL-06 | Partition large tables (events, discovery) by key; documented keys.                                             | S    |
 | SCAL-07 | Tenant isolation does not degrade with tenant count (RLS + indexed tenant_id).                                  | L    |
@@ -248,7 +252,7 @@ Targets are measured at **p75 on a mid-range Android phone over 4G** for client 
 | COR-02 | Money is integer paise; no floats.                                          | P    |
 | COR-03 | All state-changing endpoints that create resources accept idempotency keys. | L    |
 | COR-04 | Event consumers idempotent; at-least-once is assumed.                       | L    |
-| COR-05 | State change and its outbox/job row commit atomically.                      | L    |
+| COR-05 | A durable state change and the intent to perform required asynchronous work are recorded atomically or through a recoverable outbox. Exact queue integration depends on the queue decision. | L |
 | COR-06 | Webhook handling tolerates replay and reorder.                              | L    |
 | COR-07 | Test suite passes with all caches disabled.                                 | P    |
 
@@ -275,6 +279,7 @@ Targets are measured at **p75 on a mid-range Android phone over 4G** for client 
 | PRV-03 | Analytics events carry no PII; visitor id is rotating and non-identifying. | L    |
 | PRV-04 | Data export and deletion for shopper accounts.                             | L    |
 | PRV-05 | Logs scrub phone, email, address, tokens.                                  | L    |
+| PRV-06 | Data sent to external AI providers is limited to the information needed for the request; provider data retention and use are reviewed before enabling a provider. No provider receives database credentials or unrestricted database access. | L |
 
 ### Compliance (CMP) — deferred
 

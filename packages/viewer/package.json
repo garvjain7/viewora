@@ -1,0 +1,9 @@
+{
+  "name": "@viewora/viewer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@google/model-viewer": "^4.4.0"
+  }
+}

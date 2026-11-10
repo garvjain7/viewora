@@ -1,0 +1,9 @@
+alembic
+argon2-cffi
+fastapi
+procrastinate
+psycopg[binary,pool]
+pydantic>=2
+sqlalchemy<3,>=2
+structlog
+uvicorn[standard]
